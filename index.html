@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ModCheck Pro — Advanced Mod Intelligence</title>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js">
+    </script>
+    <style>
+        :root {
+            --bg: #000000;
+            --accent: #00bcd4;
+            --accent-glow: #00bcd470;
+            --accent-dim: #00bcd425;
+            --card-bg: #0a0a0f;
+            --card-border: #1a1a2e;
+            --text: #e0e0e0;
+            --text-dim: #888;
+            --text-muted: #5a5a6e;
+            --green: #00e676;
+            --amber: #ffab00;
+            --red: #ff3d3d;
+            --yellow: #ffea00;
+            --gold: #d4a843;
+            --gold-glow: #d4a84350;
+            --purple: #a855f7;
+            --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+            --font-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-sans);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .bg-grid {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.025;
+            background-image: linear-gradient(rgba(0, 188, 212, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 188, 212, 0.3) 1px, transparent 1px);
+            background-size: 40px 40px;
+            animation: gridShift 20s linear infinite;
+        }
+
+        @keyframes gridShift {
+            0%,
+            100% {
+                background-position: 0 0, 0 0;
+            }
+            50% {
+                background-position: 20px 20px, 20px 20px;
+            }
+        }
+
+        .bg-radial {
+            position: fixed;
+            top: -30%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 900px;
+            height: 900px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0, 188, 212, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+            animation: pulseGlow 6s ease-in-out infinite;
+        }
+
+        @keyframes pulseGlow {
+            0%,
+            100% {
+                opacity: 0.4;
+                transform: translateX(-50%) scale(1);
+            }
+            50% {
+                opacity: 0.9;
+                transform: translateX(-50%) scale(1.12);
+            }
+        }
+
+        .app-container {
+            position: relative;
+            z-index: 1;
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 16px 20px 40px;
+        }
+
+        /* HEADER */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 0;
+            border-bottom: 1px solid #1a1a2e;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header-logo-img {
+            width: 46px;
+            height: 46px;
+            border-radius: 10px;
+            object-fit: cover;
+            border: 2px solid var(--accent);
+            box-shadow: 0 0 22px var(--accent-glow);
+            animation: logoPulse 3s ease-in-out infinite;
+        }
+        .header-logo-fallback {
+            width: 46px;
+            height: 46px;
+            border-radius: 10px;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 0 20px var(--accent-glow);
+            animation: logoPulse 3s ease-in-out infinite;
+        }
+        @keyframes logoPulse {
+            0%,
+            100% {
+                box-shadow: 0 0 20px var(--accent-glow);
+            }
+            50% {
+                box-shadow: 0 0 35px var(--accent-glow), 0 0 55px var(--accent-dim);
+            }
+        }
+        .header-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        .header-title .accent {
+            color: var(--accent);
+        }
+        .header-subtitle {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+        }
+        .user-area {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .user-btn {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1.5px solid #1e1e35;
+            background: #0a0a14;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.25s;
+            white-space: nowrap;
+        }
+        .user-btn:hover {
+            border-color: var(--accent);
+            color: #fff;
+            background: #0d1f2a;
+        }
+        .search-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #0d0d1a;
+            border: 1.5px solid #1e1e35;
+            border-radius: 40px;
+            padding: 5px 5px 5px 16px;
+            transition: 0.3s;
+        }
+        .search-wrapper:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 25px var(--accent-dim);
+        }
+        .search-input {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 0.9rem;
+            padding: 9px 4px;
+            width: 220px;
+            outline: none;
+        }
+        .search-input::placeholder {
+            color: #444;
+            font-family: var(--font-mono);
+        }
+        .search-badge {
+            font-size: 0.6rem;
+            padding: 5px 10px;
+            border-radius: 14px;
+            background: var(--accent-dim);
+            color: var(--accent);
+            font-family: var(--font-mono);
+            white-space: nowrap;
+            border: 1px solid rgba(0, 188, 212, 0.3);
+        }
+        .search-btn {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 9px 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.8rem;
+            transition: 0.25s;
+        }
+        .search-btn:hover {
+            background: #00d5f0;
+            box-shadow: 0 0 30px var(--accent-glow);
+            transform: translateY(-1px);
+        }
+        .autocomplete-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            background: #0a0a0f;
+            border: 1.5px solid #1e1e35;
+            border-radius: 14px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.8);
+            z-index: 10;
+            display: none;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+        .autocomplete-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: #ccc;
+            border-bottom: 1px solid #1a1a2e;
+        }
+        .autocomplete-item:hover {
+            background: #0d1f2a;
+            color: #fff;
+        }
+
+        /* HERO LOGO */
+        .hero-section {
+            display: flex;
+            justify-content: center;
+            padding: 20px 0;
+        }
+        .hero-logo-circle {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: #0d0d14;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 0 0 4px rgba(0, 188, 212, 0.2), 0 0 60px rgba(0, 188, 212, 0.15);
+        }
+        .hero-logo-circle img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            z-index: 2;
+        }
+
+        /* AD ROW */
+        .ads-row-wrapper {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            margin: 14px 0;
+            padding: 0 10px;
+        }
+        .ads-row {
+            display: flex;
+            gap: 16px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            padding: 5px 0 10px 0;
+            cursor: grab;
+            scrollbar-width: none;
+        }
+        .ads-row::-webkit-scrollbar {
+            display: none;
+        }
+        .ads-row:active {
+            cursor: grabbing;
+        }
+        .ad-horizontal-card {
+            flex: 0 0 260px;
+            scroll-snap-align: start;
+            background: #0c0c16;
+            border: 1.5px solid #2a2a18;
+            border-radius: 18px;
+            padding: 14px;
+            transition: all 0.35s ease;
+            position: relative;
+            overflow: hidden;
+            user-select: none;
+        }
+        .ad-horizontal-card:hover {
+            border-color: var(--gold);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 35px rgba(212, 168, 67, 0.15);
+        }
+        .ad-badge-mini {
+            position: absolute;
+            top: 8px;
+            right: 10px;
+            font-size: 9px;
+            padding: 3px 8px;
+            border-radius: 14px;
+            background: rgba(212, 168, 67, 0.12);
+            color: var(--gold);
+            font-family: var(--font-mono);
+            border: 1px solid rgba(212, 168, 67, 0.3);
+        }
+        .ad-horizontal-img {
+            width: 100%;
+            height: 80px;
+            border-radius: 12px;
+            object-fit: cover;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #0d3b4f, #00bcd4);
+        }
+        .ad-horizontal-title {
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #fff;
+        }
+        .ad-horizontal-btn {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            background: transparent;
+            color: var(--gold);
+            border: 1.5px solid var(--gold);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.7rem;
+            transition: 0.3s;
+        }
+        .ad-horizontal-btn:hover {
+            background: var(--gold);
+            color: #000;
+        }
+        .ads-drag-hint {
+            text-align: center;
+            font-size: 0.65rem;
+            color: #555;
+            margin-top: 5px;
+            font-family: var(--font-mono);
+            opacity: 0.8;
+        }
+
+        /* FILTERS */
+        .filters-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px 0;
+            justify-content: center;
+            align-items: center;
+        }
+        .filter-label {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+        }
+        .filter-chip {
+            padding: 7px 14px;
+            border-radius: 20px;
+            border: 1.5px solid #1e1e35;
+            background: #0a0a14;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 0.74rem;
+            font-weight: 500;
+            transition: all 0.25s;
+            white-space: nowrap;
+        }
+        .filter-chip.active {
+            border-color: var(--accent);
+            color: #fff;
+            background: #0d1f2a;
+            box-shadow: 0 0 16px var(--accent-dim);
+            font-weight: 600;
+        }
+
+        /* STATS */
+        .stats-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            justify-content: center;
+            padding: 6px 0 14px;
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            color: var(--text-dim);
+        }
+        .stat-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+            display: inline-block;
+        }
+        .stat-dot.working {
+            background: #00e676;
+        }
+        .stat-dot.outdated {
+            background: #ffab00;
+        }
+        .stat-dot.broken {
+            background: #ff3d3d;
+        }
+        .stat-dot.incompatible {
+            background: #ffea00;
+        }
+
+        /* MOD GRID */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
+            gap: 16px;
+            padding: 8px 0;
+        }
+        .card {
+            background: #0a0a0f;
+            border: 1.5px solid #1a1a2e;
+            border-radius: 14px;
+            padding: 16px;
+            transition: all 0.35s;
+            animation: fadeInUp 0.5s ease forwards;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .card:hover {
+            border-color: #333;
+            transform: translateY(-5px);
+            box-shadow: 0 14px 44px rgba(0, 0, 0, 0.5);
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        .badge {
+            font-size: 0.6rem;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+        .badge-loader {
+            background: #0d1f2a;
+            color: var(--accent);
+        }
+        .badge-version {
+            background: #111;
+            color: #ccc;
+        }
+        .card-link {
+            padding: 8px 16px;
+            background: var(--accent);
+            color: #000;
+            border-radius: 20px;
+            font-weight: 700;
+            text-decoration: none;
+            font-size: 0.7rem;
+            display: inline-block;
+        }
+
+        /* IMPROVED TIMESTAMP STYLE */
+        .mod-timestamp {
+            font-size: 0.68rem;
+            font-weight: 300;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            letter-spacing: 0.2px;
+        }
+
+        /* MOD DETAIL */
+        .mod-detail-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 50;
+            backdrop-filter: blur(10px);
+            justify-content: center;
+            align-items: center;
+        }
+        .mod-detail-panel {
+            background: #0a0a0f;
+            padding: 24px;
+            border-radius: 16px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        /* DEV CREDITS */
+        .dev-credits {
+            text-align: center;
+            padding: 30px 20px;
+            border-top: 1px solid #1a1a2e;
+            margin-top: 20px;
+            font-family: var(--font-mono);
+        }
+        .dev-social-link {
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: #0a0a14;
+            border: 1.5px solid #1e1e35;
+            color: #aaa;
+            text-decoration: none;
+            margin: 0 5px;
+            font-size: 0.7rem;
+        }
+
+        /* COMPATIBILITY MODAL */
+        .compat-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 60;
+            justify-content: center;
+            align-items: center;
+        }
+        .compat-content {
+            background: #0a0a0f;
+            padding: 24px;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #1a1a2e;
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .shuffle-indicator {
+            display: inline-block;
+            font-size: 0.6rem;
+            color: var(--gold);
+            margin-left: 6px;
+            animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .search-wrapper {
+                width: 100%;
+            }
+            .ad-horizontal-card {
+                flex: 0 0 220px;
+            }
+            .mod-timestamp {
+                font-size: 0.62rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="bg-radial"></div>
+
+    <div class="app-container">
+        <header class="header">
+            <div class="header-left">
+                <img src="GAMAL.png" class="header-logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                <div class="header-logo-fallback">🔍</div>
+                <div>
+                    <div class="header-title">Mod<span class="accent">Check</span> Pro</div>
+                    <div class="header-subtitle">Advanced Mod Intelligence</div>
+                </div>
+            </div>
+            <div class="user-area">
+                <span id="shuffleBadge" class="shuffle-indicator" style="display:none;">🔄 Shuffled</span>
+                <button class="user-btn" id="favoritesBtn">⭐ Favorites</button>
+                <button class="user-btn" id="compatBtn">🔗 Compatibility</button>
+                <button class="user-btn" id="loginBtn">🔐 Login</button>
+                <button class="user-btn" id="logoutBtn" style="display:none;">🚪 Logout</button>
+            </div>
+            <div class="search-wrapper">
+                <span>🔍</span>
+                <input type="text" class="search-input" id="searchInput" placeholder="Deep search all mods..." autocomplete="off">
+                <span class="search-badge">🌐 LIVE</span>
+                <button class="search-btn" id="searchBtn">SEARCH</button>
+                <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
+            </div>
+        </header>
+
+        <section class="hero-section">
+            <div class="hero-logo-circle">
+                <img src="nk.png" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+                <span style="display:none;font-size:60px;">🔍</span>
+            </div>
+        </section>
+
+        <!-- Ad row (replaces status filter chips) -->
+        <div class="ads-row-wrapper" id="adsRowWrapper">
+            <div class="ads-row" id="adsRow"></div>
+            <div class="ads-drag-hint">↔ اسحب لليسار واليمين لمشاهدة جميع الإعلانات</div>
+        </div>
+
+        <!-- Loader filters -->
+        <section class="filters-section" id="filtersSection">
+            <span class="filter-label">Loader:</span>
+            <button class="filter-chip active" data-loader="all">ALL</button>
+            <button class="filter-chip" data-loader="fabric">FABRIC</button>
+            <button class="filter-chip" data-loader="forge">FORGE</button>
+            <button class="filter-chip" data-loader="neoforge">NEOFORGE</button>
+            <button class="filter-chip" data-loader="quilt">QUILT</button>
+        </section>
+
+        <div class="stats-bar" id="statsBar">
+            <span><span class="stat-dot working"></span> Working: <strong id="statWorking">0</strong></span>
+            <span><span class="stat-dot outdated"></span> Outdated: <strong id="statOutdated">0</strong></span>
+            <span><span class="stat-dot broken"></span> Broken: <strong id="statBroken">0</strong></span>
+            <span><span class="stat-dot incompatible"></span> Incompatible: <strong id="statIncompatible">0</strong></span>
+        </div>
+
+        <div class="grid" id="modsGrid">
+            <div class="empty-state">🔍 Search for mods...</div>
+            <div class="scroll-sentinel" id="scrollSentinel"></div>
+        </div>
+
+        <div class="dev-credits">
+            <div>Developed by <span style="color:var(--gold);">Gamal</span> 👨‍💻</div>
+            <div>
+                <a href="https://www.instagram.com/ga.mal1074?igsh=NnVoNzh2Mnl0cjgx" target="_blank" class="dev-social-link">📷 Instagram</a>
+                <a href="https://www.tiktok.com/@gamalabdulnassir3?_r=1&_t=ZS-95oqgck1bzZ" target="_blank" class="dev-social-link">🎵 TikTok</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="mod-detail-overlay" id="modDetailOverlay">
+        <div class="mod-detail-panel" id="modDetailPanel"></div>
+    </div>
+    <div class="compat-modal" id="compatModal">
+        <div class="compat-content" id="compatContent"></div>
+    </div>
+
+    <script>
+        (function() {
+            // Firebase init
+            const firebaseConfig = {
+                apiKey: "YOUR_API_KEY",
+                authDomain: "modcheck-pro.firebaseapp.com",
+                projectId: "modcheck-pro",
+                storageBucket: "modcheck-pro.firebasestorage.app",
+                messagingSenderId: "144823916189",
+                appId: "1:144823916189:web:b38dac9b6ee127331ea674",
+                measurementId: "G-GT6N5WM3G5"
+            };
+            firebase.initializeApp(firebaseConfig);
+            const auth = firebase.auth();
+            const db = firebase.firestore();
+
+            const state = {
+                allModsPool: [],
+                filteredMods: [],
+                activeLoaderFilter: 'all',
+                searchQuery: '',
+                currentOffset: 0,
+                noMoreResults: false,
+                versionCache: {},
+                user: null,
+                favorites: new Set(),
+                selectedModsForCompat: new Set(),
+                sessionSeed: Date.now()
+            };
+
+            const searchInput = document.getElementById('searchInput');
+            const searchBtn = document.getElementById('searchBtn');
+            const modsGrid = document.getElementById('modsGrid');
+            const filterChips = document.querySelectorAll('#filtersSection .filter-chip');
+            const loginBtn = document.getElementById('loginBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const favoritesBtn = document.getElementById('favoritesBtn');
+            const compatBtn = document.getElementById('compatBtn');
+            const compatModal = document.getElementById('compatModal');
+            const compatContent = document.getElementById('compatContent');
+            const modDetailOverlay = document.getElementById('modDetailOverlay');
+            const modDetailPanel = document.getElementById('modDetailPanel');
+            const adsRow = document.getElementById('adsRow');
+            const shuffleBadge = document.getElementById('shuffleBadge');
+
+            // ========== AD DATA ==========
+            const horizontalAds = [
+                { title: 'مخدمات ماينكرافت', gradient: 'linear-gradient(135deg, #0d3b4f, #00bcd4)', link: '#' },
+                { title: 'أدوات تطوير المودات', gradient: 'linear-gradient(135deg, #1a1a2e, #7c3aed)', link: '#' },
+                { title: 'حزم شيدر احترافية', gradient: 'linear-gradient(135deg, #1a1000, #d4a843)', link: '#' },
+                { title: 'لانشر مودباك', gradient: 'linear-gradient(135deg, #0a0a14, #00e676)', link: '#' }
+            ];
+
+            function renderHorizontalAds() {
+                adsRow.innerHTML = horizontalAds.map(ad => `
+                <div class="ad-horizontal-card">
+                    <div class="ad-badge-mini">إعلان</div>
+                    <div class="ad-horizontal-img" style="background:${ad.gradient};"></div>
+                    <div class="ad-horizontal-title">${ad.title}</div>
+                    <a href="${ad.link}" target="_blank" class="ad-horizontal-btn">معرفة المزيد</a>
+                </div>`).join('');
+            }
+            renderHorizontalAds();
+
+            // Drag to scroll ads
+            let isDown = false,
+                startX, scrollLeft;
+            adsRow.addEventListener('mousedown', (e) => { isDown = true;
+                startX = e.pageX - adsRow.offsetLeft;
+                scrollLeft = adsRow.scrollLeft;
+                adsRow.style.cursor = 'grabbing'; });
+            adsRow.addEventListener('mouseleave', () => { isDown = false;
+                adsRow.style.cursor = 'grab'; });
+            adsRow.addEventListener('mouseup', () => { isDown = false;
+                adsRow.style.cursor = 'grab'; });
+            adsRow.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - adsRow.offsetLeft;
+                const walk = (x - startX) * 2;
+                adsRow.scrollLeft = scrollLeft - walk;
+            });
+
+            // ========== FISHER-YATES SHUFFLE ==========
+            function shuffleArray(arr, seed) {
+                const array = [...arr];
+                let m = array.length,
+                    t, i;
+                // Simple seeded random using linear congruential generator
+                let s = seed || Date.now();
+                const random = () => {
+                    s = (s * 1664525 + 1013904223) & 0xffffffff;
+                    return (s >>> 0) / 0xffffffff;
+                };
+                while (m) {
+                    i = Math.floor(random() * m--);
+                    t = array[m];
+                    array[m] = array[i];
+                    array[i] = t;
+                }
+                return array;
+            }
+
+            function showShuffleIndicator() {
+                if (shuffleBadge) {
+                    shuffleBadge.style.display = 'inline-block';
+                    setTimeout(() => { shuffleBadge.style.display = 'none'; }, 2000);
+                }
+            }
+
+            function applyShuffleAndRender() {
+                const seed = state.user ? hashCode(state.user.uid) : state.sessionSeed;
+                state.filteredMods = shuffleArray(state.filteredMods, seed);
+                renderGrid();
+                updateStats();
+                showShuffleIndicator();
+            }
+
+            function hashCode(str) {
+                let hash = 0;
+                for (let i = 0; i < str.length; i++) {
+                    const char = str.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash |= 0;
+                }
+                return Math.abs(hash);
+            }
+
+            // ========== AUTH ==========
+            auth.onAuthStateChanged(async user => {
+                const wasLoggedIn = !!state.user;
+                state.user = user;
+                if (user) {
+                    loginBtn.style.display = 'none';
+                    logoutBtn.style.display = 'inline-block';
+                    const doc = await db.collection('users').doc(user.uid).get();
+                    if (doc.exists && doc.data().favorites) {
+                        state.favorites = new Set(doc.data().favorites);
+                    } else {
+                        state.favorites = new Set();
+                    }
+                } else {
+                    loginBtn.style.display = 'inline-block';
+                    logoutBtn.style.display = 'none';
+                    state.favorites = new Set();
+                }
+                // Reshuffle on account switch
+                if (wasLoggedIn !== !!user && state.filteredMods.length > 0) {
+                    applyShuffleAndRender();
+                } else if (!wasLoggedIn && !user && state.filteredMods.length > 0) {
+                    // Initial load with no user
+                    applyShuffleAndRender();
+                }
+                if (!wasLoggedIn && user && state.filteredMods.length === 0) {
+                    // First login with no mods loaded yet
+                }
+            });
+
+            loginBtn.addEventListener('click', () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
+            .catch(alert));
+            logoutBtn.addEventListener('click', () => auth.signOut());
+            favoritesBtn.addEventListener('click', () => {
+                if (!state.user) return alert('Login required');
+                const favMods = state.allModsPool.filter(m => state.favorites.has(m.slug));
+                state.filteredMods = favMods;
+                renderGrid();
+            });
+
+            async function updateFavoritesFirestore() {
+                if (!state.user) return;
+                await db.collection('users').doc(state.user.uid).set({
+                    favorites: Array.from(state.favorites)
+                }, { merge: true });
+            }
+
+            function toggleFavorite(slug) {
+                if (!state.user) return alert('Login required');
+                if (state.favorites.has(slug)) state.favorites.delete(slug);
+                else state.favorites.add(slug);
+                updateFavoritesFirestore();
+                renderGrid();
+            }
+
+            // ========== MOD DETAIL ==========
+            function openModDetail(slug) {
+                const mod = state.allModsPool.find(m => m.slug === slug);
+                if (!mod) return;
+                modDetailPanel.innerHTML = `
+                <button onclick="document.getElementById('modDetailOverlay').style.display='none'" style="float:right;background:none;border:none;color:white;font-size:1.5rem;cursor:pointer;">✕</button>
+                <h2>${mod.title}</h2>
+                <p class="mod-timestamp">🕐 ${formatDate(mod.date_modified)}</p>
+                <p>${mod.description}</p>
+                <div style="margin:10px 0;">${mod.allLoaders.map(l=>`<span class="badge badge-loader">${l}</span>`).join(' ')}</div>
+                <p>Status: ${mod.healthStatus}</p>
+                <a href="https://modrinth.com/mod/${mod.slug}" target="_blank" class="card-link">🔗 Modrinth</a>
+                <button class="card-link" id="downloadBtn">⬇️ Download</button>
+                <div style="margin-top:10px;background:#111;padding:10px;border-radius:8px;color:#aaa;">إعلان</div>`;
+                modDetailOverlay.style.display = 'flex';
+                document.getElementById('downloadBtn').addEventListener('click', async () => {
+                    const versions = mod._versionData || await fetchProjectVersions(slug);
+                    if (versions && versions.length > 0) {
+                        const latest = versions.sort((a, b) => new Date(b.date_published) - new Date(a
+                            .date_published))[0];
+                        if (latest.files && latest.files[0]) window.open(latest.files[0].url, '_blank');
+                    }
+                });
+            }
+            modDetailOverlay.addEventListener('click', e => { if (e.target === modDetailOverlay) modDetailOverlay.style
+                    .display = 'none'; });
+
+            // ========== COMPATIBILITY ==========
+            compatBtn.addEventListener('click', () => {
+                compatModal.style.display = 'flex';
+                compatContent.innerHTML = `
+                <h3 style="color:white;">Select mods</h3>
+                <div style="max-height:300px;overflow:auto;">
+                  ${state.filteredMods.slice(0,20).map(m => `<label><input type="checkbox" value="${m.slug}"> ${m.title}</label><br>`).join('')}
+                </div>
+                <button id="runCheckBtn" class="card-link">Check</button>
+                <div id="checkResult"></div>`;
+                const checkboxes = compatContent.querySelectorAll('input');
+                checkboxes.forEach(cb => cb.addEventListener('change', () => {
+                    if (cb.checked) state.selectedModsForCompat.add(cb.value);
+                    else state.selectedModsForCompat.delete(cb.value);
+                }));
+                document.getElementById('runCheckBtn').addEventListener('click', () => {
+                    const slugs = Array.from(state.selectedModsForCompat);
+                    if (slugs.length < 2) return document.getElementById('checkResult').innerHTML =
+                        '<p style="color:red;">اختر مودين على الأقل</p>';
+                    const mods = slugs.map(s => state.allModsPool.find(m => m.slug === s)).filter(Boolean);
+                    const common = [...new Set(mods[0].gameVersions)].filter(v => mods.every(m => m.gameVersions
+                        .includes(v)));
+                    document.getElementById('checkResult').innerHTML = common.length > 0 ?
+                        `<p style="color:#00e676;">✅ Compatible: ${common.join(', ')}</p>` :
+                        '<p style="color:red;">❌ No common version</p>';
+                });
+            });
+            compatModal.addEventListener('click', e => { if (e.target === compatModal) compatModal.style.display = 'none'; });
+
+            // ========== API ==========
+            async function fetchSearchPage(query, offset, limit = 30) {
+                const res = await fetch(
+                    `https://api.modrinth.com/v2/search?query=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}`
+                    );
+                return (await res.json()).hits || [];
+            }
+
+            async function fetchProjectVersions(slug) {
+                if (state.versionCache[slug]) return state.versionCache[slug];
+                const res = await fetch(`https://api.modrinth.com/v2/project/${slug}/version`);
+                const data = await res.json();
+                state.versionCache[slug] = data;
+                return data;
+            }
+
+            function enrichMod(hit) {
+                return {
+                    title: hit.title,
+                    slug: hit.slug,
+                    description: hit.description || '',
+                    icon_url: hit.icon_url,
+                    categories: hit.categories || [],
+                    date_modified: hit.date_modified,
+                    allLoaders: (hit.categories || []).filter(c => ['fabric', 'forge', 'neoforge', 'quilt'].includes(c
+                        .toLowerCase())),
+                    healthStatus: 'ANALYZING',
+                    gameVersions: [],
+                    _versionData: null
+                };
+            }
+
+            async function performSearch(query) {
+                state.searchQuery = query;
+                state.allModsPool = [];
+                state.currentOffset = 0;
+                modsGrid.innerHTML = '<div class="spinner-container"><div class="spinner"></div></div>';
+                const hits = await fetchSearchPage(query, 0);
+                const raw = hits.map(enrichMod);
+                await Promise.all(raw.map(m => fetchProjectVersions(m.slug).then(v => { m._versionData = v; })));
+                state.allModsPool = raw.map(m => {
+                    if (!m._versionData || m._versionData.length === 0) m.healthStatus = 'BROKEN';
+                    else {
+                        m.gameVersions = [...new Set(m._versionData.flatMap(v => v.game_versions))];
+                        const hasFile = m._versionData.some(v => v.files && v.files.length > 0);
+                        if (!hasFile) m.healthStatus = 'BROKEN';
+                        else if (!m.gameVersions.some(v => v.startsWith('1.18') || v.startsWith('1.19') || v
+                                .startsWith('1.20'))) m.healthStatus = 'INCOMPATIBLE';
+                        else if (new Date(m.date_modified) < new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000))
+                            m.healthStatus = 'OUTDATED';
+                        else m.healthStatus = 'WORKING';
+                    }
+                    return m;
+                });
+                applyLoaderFilter();
+                // Reshuffle results for freshness
+                applyShuffleAndRender();
+            }
+
+            function applyLoaderFilter() {
+                const list = state.activeLoaderFilter === 'all' ?
+                    state.allModsPool :
+                    state.allModsPool.filter(m => m.allLoaders.includes(state.activeLoaderFilter));
+                state.filteredMods = list;
+                renderGrid();
+                updateStats();
+            }
+
+            function renderGrid() {
+                const adsEvery = 6;
+                let html = '';
+                state.filteredMods.forEach((mod, i) => {
+                    html += `
+                <div class="card" onclick="window.openModDetail('${mod.slug}')">
+                  <div style="display:flex;gap:10px;">
+                    ${mod.icon_url ? `<img src="${mod.icon_url}" class="card-icon" onerror="this.style.display='none';">` : ''}
+                    <div>
+                      <div style="font-weight:700;">${mod.title}</div>
+                      <div style="font-size:0.7rem;color:#666;">/${mod.slug}</div>
+                    </div>
+                  </div>
+                  <div style="margin:8px 0;">${mod.allLoaders.map(l=>`<span class="badge badge-loader">${l}</span>`).join(' ')} ${mod.gameVersions.slice(0,2).map(v=>`<span class="badge badge-version">${v}</span>`).join('')}</div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="mod-timestamp">🕐 ${formatDate(mod.date_modified)}</span>
+                    <button onclick="event.stopPropagation();window.toggleFavorite('${mod.slug}')" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">${state.favorites.has(mod.slug)?'⭐':'☆'}</button>
+                    <span class="card-link">OPEN</span>
+                  </div>
+                </div>`;
+                    if ((i + 1) % adsEvery === 0 && i < state.filteredMods.length - 1) {
+                        html +=
+                            `<div class="ad-horizontal-card" style="margin:0;flex:1;min-width:200px;"><div class="ad-badge-mini">إعلان</div><div class="ad-horizontal-img" style="background:#333;"></div><div class="ad-horizontal-title">Sponsored</div><a href="#" class="ad-horizontal-btn">معرفة المزيد</a></div>`;
+                    }
+                });
+                modsGrid.innerHTML = html + '<div class="scroll-sentinel" id="scrollSentinel"></div>';
+                setupSentinel();
+            }
+
+            function updateStats() {
+                document.getElementById('statWorking').textContent = state.allModsPool.filter(m => m.healthStatus ===
+                    'WORKING').length;
+                document.getElementById('statOutdated').textContent = state.allModsPool.filter(m => m.healthStatus ===
+                    'OUTDATED').length;
+                document.getElementById('statBroken').textContent = state.allModsPool.filter(m => m.healthStatus ===
+                    'BROKEN').length;
+                document.getElementById('statIncompatible').textContent = state.allModsPool.filter(m => m.healthStatus ===
+                    'INCOMPATIBLE').length;
+            }
+
+            function formatDate(date) {
+                if (!date) return '';
+                const days = Math.floor((Date.now() - new Date(date)) / 86400000);
+                if (days < 1) return 'Today';
+                if (days < 2) return 'Yesterday';
+                if (days < 30) return `${days} days ago`;
+                if (days < 365) return `${Math.floor(days / 30)} months ago`;
+                return `${Math.floor(days / 365)} years ago`;
+            }
+
+            // ========== LOADER FILTERS ==========
+            filterChips.forEach(chip => {
+                chip.addEventListener('click', () => {
+                    filterChips.forEach(c => c.classList.remove('active'));
+                    chip.classList.add('active');
+                    state.activeLoaderFilter = chip.dataset.loader;
+                    if (state.searchQuery) performSearch(state.searchQuery);
+                    else applyLoaderFilter();
+                });
+            });
+
+            searchBtn.addEventListener('click', () => performSearch(searchInput.value.trim() || 'minecraft'));
+            searchInput.addEventListener('keypress', e => { if (e.key === 'Enter') performSearch(searchInput.value
+                    .trim() || 'minecraft'); });
+
+            // ========== INFINITE SCROLL ==========
+            function setupSentinel() {
+                const sentinel = document.getElementById('scrollSentinel');
+                if (sentinel) {
+                    const observer = new IntersectionObserver(entries => {
+                        if (entries[0].isIntersecting && !state.noMoreResults && state.searchQuery) {
+                            loadMore();
+                            observer.unobserve(sentinel);
+                        }
+                    }, { rootMargin: '200px' });
+                    observer.observe(sentinel);
+                }
+            }
+
+            async function loadMore() {
+                const hits = await fetchSearchPage(state.searchQuery, state.currentOffset, 20);
+                if (hits.length === 0) { state.noMoreResults = true; return; }
+                state.currentOffset += hits.length;
+                const raw = hits.map(enrichMod);
+                await Promise.all(raw.map(m => fetchProjectVersions(m.slug).then(v => { m._versionData = v; })));
+                const newMods = raw.map(m => {
+                    if (!m._versionData || m._versionData.length === 0) m.healthStatus = 'BROKEN';
+                    else {
+                        m.gameVersions = [...new Set(m._versionData.flatMap(v => v.game_versions))];
+                        const hasFile = m._versionData.some(v => v.files && v.files.length > 0);
+                        if (!hasFile) m.healthStatus = 'BROKEN';
+                        else if (!m.gameVersions.some(v => v.startsWith('1.18') || v.startsWith('1.19') || v
+                                .startsWith('1.20'))) m.healthStatus = 'INCOMPATIBLE';
+                        else if (new Date(m.date_modified) < new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000))
+                            m.healthStatus = 'OUTDATED';
+                        else m.healthStatus = 'WORKING';
+                    }
+                    return m;
+                });
+                state.allModsPool = [...state.allModsPool, ...newMods];
+                // Shuffle new mods into the pool and re-render
+                const seed = state.user ? hashCode(state.user.uid) : state.sessionSeed;
+                state.allModsPool = shuffleArray(state.allModsPool, seed);
+                applyLoaderFilter();
+            }
+
+            // ========== INIT ==========
+            state.sessionSeed = Date.now();
+            performSearch('minecraft');
+            window.toggleFavorite = toggleFavorite;
+            window.openModDetail = openModDetail;
+        })();
+    </script>
+</body>
+</html>
